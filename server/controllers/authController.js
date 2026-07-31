@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const jwt=require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 // Register User
 const registerUser = async (req, res) => {
@@ -62,15 +63,25 @@ const loginUser = async (req, res) => {
         message: "Invalid email or password",
       });
     }
+    const token = jwt.sign(
+  {
+    id: user._id,
+  },
+  process.env.JWT_SECRET,
+  {
+    expiresIn: "7d",
+  }
+);
 
     res.status(200).json({
-      message: "Login successful",
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-      },
-    });
+  message: "Login successful",
+  token,
+  user: {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+  },
+});
 
   } catch (error) {
     console.error(error);
@@ -80,8 +91,14 @@ const loginUser = async (req, res) => {
     });
   }
 };
-
+const getProfile = (req, res) => {
+    res.status(200).json({
+        message: "Protected route accessed successfully",
+        user: req.user,
+    });
+};
 module.exports = {
   registerUser,
   loginUser,
+  getProfile
 };

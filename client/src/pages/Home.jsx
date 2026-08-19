@@ -3,8 +3,11 @@ import heroImage from "../assets/hero.png";
 import Features from "../components/Features";
 import Stats from "../components/Stats";
 import HowItWorks from "../components/HowItWorks";
+import {useNavigate} from "react-router-dom";
 
 function Home() {
+  const navigate = useNavigate();
+
   return (
     <>
     <section className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-black text-white pt-24 overflow-hidden">
@@ -52,13 +55,19 @@ function Home() {
             className="mt-10 flex gap-5"
           >
 
-            <button className="px-8 py-4 rounded-xl bg-blue-600 hover:bg-blue-700 hover:scale-105 transition-all duration-300 shadow-lg shadow-blue-500/40">
-              Get Started
-            </button>
+            <button
+  onClick={() => navigate("/dashboard")}
+  className="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-lg font-semibold transition"
+>
+  Get Started
+</button>
 
-            <button className="px-8 py-4 rounded-xl border border-white/30 hover:bg-white hover:text-black transition-all duration-300">
-              Upload Resume
-            </button>
+            <button
+  onClick={() => navigate("/dashboard")}
+  className="bg-white text-slate-800 hover:bg-gray-100 px-6 py-3 rounded-lg font-semibold transition"
+>
+  Upload Resume
+</button>
 
           </motion.div>
 

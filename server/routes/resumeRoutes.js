@@ -8,7 +8,10 @@ const upload = require("../middleware/uploadMiddleware");
 const {
   uploadResume,
   getMyResumes,
+  downloadResume,
+  deleteResume,
 } = require("../controllers/resumeController");
+
 
 // ==========================================
 // Upload Resume
@@ -21,6 +24,7 @@ router.post(
   uploadResume
 );
 
+
 // ==========================================
 // Get Logged-in User's Resumes
 // ==========================================
@@ -30,5 +34,28 @@ router.get(
   authMiddleware,
   getMyResumes
 );
+
+
+// ==========================================
+// Download Resume
+// ==========================================
+
+router.get(
+  "/:id/download",
+  authMiddleware,
+  downloadResume
+);
+
+
+// ==========================================
+// Delete Resume
+// ==========================================
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  deleteResume
+);
+
 
 module.exports = router;

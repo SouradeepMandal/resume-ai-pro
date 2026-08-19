@@ -2,11 +2,20 @@ const mongoose = require("mongoose");
 
 const resumeSchema = new mongoose.Schema(
   {
+    // ==========================================
+    // Resume Owner
+    // ==========================================
+
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
+
+
+    // ==========================================
+    // Original File Information
+    // ==========================================
 
     originalName: {
       type: String,
@@ -32,7 +41,18 @@ const resumeSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+
+
+    // ==========================================
+    // Extracted Resume Text
+    // ==========================================
+
+    extractedText: {
+      type: String,
+      default: "",
+    },
   },
+
   {
     timestamps: true,
   }

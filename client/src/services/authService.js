@@ -16,6 +16,12 @@ export const loginUser = async (userData) => {
   return response.data;
 };
 
+// Verify OTP
+export const verifyOTP = async (data) => {
+  const response = await API.post("/verify-otp", data);
+  return response.data;
+};
+
 // Get Profile
 export const getProfile = async (token) => {
   const response = await API.get("/profile", {

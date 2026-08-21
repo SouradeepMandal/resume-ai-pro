@@ -6,6 +6,9 @@ import Home from "../pages/Home";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Dashboard from "../pages/Dashboard";
+import ATSChecker from "../pages/ATSChecker";
+import JobTracker from "../pages/JobTracker";
+import ResumeRebuilder from "../pages/ResumeRebuilder";
 import NotFound from "../pages/NotFound";
 
 import ProtectedRoute from "./ProtectedRoute";
@@ -16,9 +19,9 @@ function AppRoutes() {
     <BrowserRouter>
       <Routes>
         <Route element={<MainLayout />}>
+          <Route path="/" element={<Home />} />
           {/* Public Routes - redirect to dashboard if logged in */}
           <Route element={<PublicRoute />}>
-            <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
           </Route>
@@ -26,6 +29,9 @@ function AppRoutes() {
           {/* Protected Routes - redirect to login if not logged in */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/ats-checker" element={<ATSChecker />} />
+            <Route path="/job-tracker" element={<JobTracker />} />
+            <Route path="/rebuild-resume" element={<ResumeRebuilder />} />
           </Route>
         </Route>
 

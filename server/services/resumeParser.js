@@ -1,7 +1,6 @@
 const fs = require("fs").promises;
 const path = require("path");
-
-const { PDFParse } = require("pdf-parse");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const mammoth = require("mammoth");
 
 
@@ -12,22 +11,28 @@ const mammoth = require("mammoth");
 const extractPdfText = async (filePath) => {
   try {
     const buffer = await fs.readFile(filePath);
+    const base64pdf = buffer.toString("base64");
 
-    const parser = new PDFParse({
-      data: buffer,
-    });
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
 
-    try {
-      const result = await parser.getText();
+    const prompt = "Extract all the text and information from this resume perfectly. Include contact info, skills, education, and experience. Also, if there is a profile photo, describe it briefly.";
+    
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          data: base64pdf,
+          mimeType: "application/pdf"
+        }
+      }
+    ]);
 
-      return result.text || "";
-    } finally {
-      await parser.destroy();
-    }
-
+    const text = result.response.text();
+    return text || "";
   } catch (error) {
-    console.error("PDF parsing error:", error);
-    throw error;
+    console.error("PDF parsing via Gemini error:", error);
+    throw new Error("Failed to extract text from PDF using AI.");
   }
 };
 

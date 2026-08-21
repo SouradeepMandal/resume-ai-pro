@@ -1,7 +1,6 @@
-import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from './Button';
-import { FiAlertTriangle, FiX } from 'react-icons/fi';
+import { FiAlertTriangle } from 'react-icons/fi';
 
 const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel, isLoading }) => {
   return (

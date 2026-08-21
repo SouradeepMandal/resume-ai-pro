@@ -44,12 +44,32 @@ const resumeSchema = new mongoose.Schema(
 
 
     // ==========================================
-    // Extracted Resume Text
+    // Extracted Resume Text & AI Analysis
     // ==========================================
 
     extractedText: {
       type: String,
       default: "",
+    },
+
+    extractedSkills: {
+      type: [String],
+      default: [],
+    },
+
+    targetJobDescription: {
+      type: String,
+      default: "",
+    },
+
+    atsScore: {
+      type: Number,
+      default: null, // Null if not calculated
+    },
+
+    atsFeedback: {
+      type: mongoose.Schema.Types.Mixed, // Stores structured JSON feedback from Gemini
+      default: {},
     },
   },
 
@@ -58,4 +78,4 @@ const resumeSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model("Resume", resumeSchema);
+module.exports = mongoose.models.Resume || mongoose.model("Resume", resumeSchema);

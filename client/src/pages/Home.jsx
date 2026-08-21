@@ -4,9 +4,11 @@ import Features from "../components/Features";
 import Stats from "../components/Stats";
 import HowItWorks from "../components/HowItWorks";
 import {useNavigate} from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 function Home() {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   return (
     <>
@@ -56,14 +58,14 @@ function Home() {
           >
 
             <button
-  onClick={() => navigate("/dashboard")}
+  onClick={() => navigate(isAuthenticated ? "/dashboard" : "/register")}
   className="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-lg font-semibold transition"
 >
   Get Started
 </button>
 
             <button
-  onClick={() => navigate("/dashboard")}
+  onClick={() => navigate(isAuthenticated ? "/dashboard" : "/login")}
   className="bg-white text-slate-800 hover:bg-gray-100 px-6 py-3 rounded-lg font-semibold transition"
 >
   Upload Resume

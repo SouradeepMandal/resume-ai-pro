@@ -20,6 +20,9 @@ const registerUser = async (req, res) => {
     const { name, email: identifier, password } = req.body;
     
     // In our frontend, we send identifier as 'email'. Let's parse it.
+    if (!identifier) {
+      return res.status(400).json({ message: "Email or phone is required" });
+    }
     const isEmail = identifier.includes('@');
     const query = isEmail ? { email: identifier } : { phone: identifier };
 

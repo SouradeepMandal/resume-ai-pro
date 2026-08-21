@@ -1,9 +1,11 @@
 import { useState, useRef } from "react";
 import { uploadResume } from "../services/resumeService";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiUploadCloud, FiFileText, FiX, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
+import { FiUploadCloud, FiFileText, FiX } from "react-icons/fi";
 import { useToast } from "../context/ToastContext";
 import Button from "./ui/Button";
+
+import { useNavigate } from "react-router-dom";
 
 const ResumeUpload = ({ onUploadSuccess }) => {
   const [file, setFile] = useState(null);
@@ -11,6 +13,7 @@ const ResumeUpload = ({ onUploadSuccess }) => {
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef(null);
   const { addToast } = useToast();
+  const navigate = useNavigate();
 
   const handleFileChange = (selectedFile) => {
     if (!selectedFile) return;
@@ -58,6 +61,7 @@ const ResumeUpload = ({ onUploadSuccess }) => {
       addToast(data.message, "success");
       setFile(null);
       if (onUploadSuccess) onUploadSuccess();
+      navigate("/ats-checker");
     } catch (error) {
       console.error("Resume upload failed:", error);
       addToast(

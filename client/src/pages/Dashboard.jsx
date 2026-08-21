@@ -2,63 +2,66 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { getProfile } from "../services/authService";
 import { getMyResumes, downloadResume, deleteResume } from "../services/resumeService";
+import { getJobs } from "../services/jobService";
 import ResumeUpload from "../components/ResumeUpload";
 import Button from "../components/ui/Button";
 import ConfirmModal from "../components/ui/ConfirmModal";
 import { useToast } from "../context/ToastContext";
 import { FiDownload, FiTrash2, FiFile, FiClock } from "react-icons/fi";
 
+let dashboardCache = null;
+
 function Dashboard() {
   const [user, setUser] = useState(null);
-  const [resumes, setResumes] = useState([]);
-  const [resumeLoading, setResumeLoading] = useState(true);
+  const [resumes, setResumes] = useState(dashboardCache?.resumes || []);
+  const [jobs, setJobs] = useState(dashboardCache?.jobs || []);
+  const [resumeLoading, setResumeLoading] = useState(!dashboardCache);
   const [downloadingId, setDownloadingId] = useState(null);
   const [resumeToDelete, setResumeToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const navigate = useNavigate();
   const { addToast } = useToast();
 
-  const fetchResumes = useCallback(async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
-      setResumeLoading(true);
-      const resumeData = await getMyResumes();
-      setResumes(resumeData.resumes || []);
+      const token = localStorage.getItem("token");
+      if (!token) {
+        dashboardCache = null;
+        navigate("/login");
+        return;
+      }
+
+      const profileData = await getProfile(token);
+      setUser(profileData.user);
+      
+      if (!dashboardCache) setResumeLoading(true);
+      
+      const [resumeData, jobData] = await Promise.all([
+        getMyResumes(),
+        getJobs()
+      ]);
+      
+      dashboardCache = { resumes: resumeData.resumes || [], jobs: jobData || [] };
+      setResumes(dashboardCache.resumes);
+      setJobs(dashboardCache.jobs);
     } catch (error) {
-      console.error("Failed to fetch resumes:", error);
-      addToast("Failed to fetch resumes.", "error");
-    } finally {
-      setResumeLoading(false);
-    }
-  }, [addToast]);
-
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          navigate("/login");
-          return;
-        }
-
-        const profileData = await getProfile(token);
-        setUser(profileData.user);
-        
-        await fetchResumes();
-      } catch (error) {
-        console.error("Dashboard error:", error);
+      console.error("Dashboard error:", error);
+      if (error.response?.status === 401) {
         localStorage.removeItem("token");
         navigate("/login");
       }
-    };
+      addToast("Failed to fetch dashboard data.", "error");
+    } finally {
+      setResumeLoading(false);
+    }
+  }, [navigate, addToast]);
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDashboardData();
-  }, [navigate, fetchResumes]);
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
+  }, [fetchDashboardData]);
 
   const handleDownload = async (resume) => {
     try {
@@ -96,87 +99,164 @@ function Dashboard() {
     }
   };
 
+  // Job Tracker Stats
+  const activeJobs = jobs.filter(j => ["Bookmarked", "Applied", "Interview"].includes(j.status)).length;
+  const interviews = jobs.filter(j => j.status === "Interview").length;
+
   return (
-    <div className="min-h-screen bg-gray-900 pt-24 pb-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto space-y-8">
+    <div className="min-h-screen bg-[#0a0a0a] pt-24 pb-12 px-4 sm:px-6 lg:px-8 font-sans">
+      <div className="max-w-6xl mx-auto space-y-8">
         
         {/* Header */}
-        <div className="flex justify-between items-center bg-gray-800/50 backdrop-blur-lg border border-gray-700/50 rounded-2xl p-6 shadow-xl">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">Dashboard</h1>
-            {user && <p className="text-gray-400 mt-1">Welcome back, {user.name}</p>}
+            <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Dashboard</h1>
+            {user && <p className="text-gray-400 mt-2 text-lg">Welcome back, <span className="text-teal-400">{user.name}</span></p>}
           </div>
-          <Button variant="danger" onClick={handleLogout}>Logout</Button>
+          <div className="flex gap-4">
+            <div className="bg-black/50 border border-teal-500/30 px-6 py-3 rounded-xl text-center">
+              <p className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1">Active Applications</p>
+              <p className="text-2xl font-bold text-teal-400">{activeJobs}</p>
+            </div>
+            <div className="bg-black/50 border border-indigo-500/30 px-6 py-3 rounded-xl text-center">
+              <p className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1">Interviews</p>
+              <p className="text-2xl font-bold text-indigo-400">{interviews}</p>
+            </div>
+          </div>
         </div>
 
-        {/* Upload Section */}
-        <ResumeUpload onUploadSuccess={fetchResumes} />
-
-        {/* Resumes Section */}
-        <div className="bg-gray-800/50 backdrop-blur-lg border border-gray-700/50 rounded-2xl p-6 shadow-xl">
-          <h2 className="text-2xl font-bold text-white mb-6">Your Resumes</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {resumeLoading ? (
-            <div className="space-y-4">
-              {[1, 2].map((i) => (
-                <div key={i} className="animate-pulse flex space-x-4 bg-gray-700/50 p-6 rounded-xl">
-                  <div className="rounded-full bg-gray-600 h-10 w-10"></div>
+          {/* Left Column: Resumes */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Upload Section */}
+            {(resumes.length === 0 || isUploading) && (
+              <ResumeUpload onUploadSuccess={() => { setIsUploading(false); fetchDashboardData(); }} />
+            )}
+
+            {/* Resumes Section */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-white">Master Resume</h2>
+                <div className="flex gap-3">
+                  {resumes.length > 0 && !isUploading && (
+                    <Button variant="secondary" size="sm" onClick={() => setIsUploading(true)} className="bg-white/5 hover:bg-white/10">
+                      Upload New
+                    </Button>
+                  )}
+                  {resumes.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={() => navigate("/ats-checker")} className="text-teal-400 hover:text-teal-300">
+                      Analyze ATS Match →
+                    </Button>
+                  )}
+                </div>
+              </div>
+              
+              {resumeLoading ? (
+                <div className="animate-pulse flex space-x-4 bg-black/50 p-6 rounded-xl border border-gray-800">
+                  <div className="rounded-full bg-gray-800 h-10 w-10"></div>
                   <div className="flex-1 space-y-3 py-1">
-                    <div className="h-4 bg-gray-600 rounded w-3/4"></div>
+                    <div className="h-4 bg-gray-800 rounded w-3/4"></div>
                     <div className="space-y-2">
-                      <div className="h-3 bg-gray-600 rounded w-1/4"></div>
+                      <div className="h-3 bg-gray-800 rounded w-1/4"></div>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : resumes.length === 0 ? (
-            <div className="text-center py-12 border-2 border-dashed border-gray-600 rounded-xl">
-              <FiFile className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-4 text-sm font-semibold text-white">No resumes</h3>
-              <p className="mt-1 text-sm text-gray-400">Get started by uploading a resume above.</p>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {resumes.map((resume) => (
-                <div key={resume._id} className="bg-gray-700/30 border border-gray-600 rounded-xl p-5 hover:bg-gray-700/50 transition-colors">
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-lg">
-                      <FiFile className="w-6 h-6" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-white font-medium truncate">{resume.originalName}</h3>
-                      <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
-                        <span className="uppercase font-semibold tracking-wider">{resume.fileType}</span>
-                        <span>•</span>
-                        <span className="flex items-center gap-1"><FiClock /> {new Date(resume.createdAt).toLocaleDateString()}</span>
+              ) : resumes.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed border-gray-800 rounded-xl bg-black/30">
+                  <FiFile className="mx-auto h-12 w-12 text-gray-600" />
+                  <h3 className="mt-4 text-sm font-semibold text-white">No active resume</h3>
+                  <p className="mt-1 text-sm text-gray-500">Upload a resume to unlock AI features.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {resumes.slice(0,1).map((resume) => (
+                    <div 
+                      key={resume._id} 
+                      className="bg-black/50 border border-teal-500/30 rounded-xl p-5 relative overflow-hidden cursor-pointer hover:border-teal-500 transition-colors"
+                      onClick={() => window.open(`http://localhost:5000/${resume.filePath.replace(/\\/g, '/')}`, '_blank')}
+                    >
+                      <div className="absolute top-0 right-0 bg-teal-500 text-black text-xs font-bold px-3 py-1 rounded-bl-lg">
+                        ACTIVE
+                      </div>
+                      <div className="flex items-start gap-4">
+                        <div className="p-4 bg-teal-500/10 text-teal-400 rounded-xl">
+                           <FiFile className="w-8 h-8" />
+                        </div>
+                        <div className="flex-1 min-w-0 pr-16">
+                          <span 
+                            className="text-white font-bold text-lg truncate hover:text-teal-400 transition-colors block"
+                          >
+                            {resume.originalName}
+                          </span>
+                          <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+                            <span className="uppercase font-semibold tracking-wider text-teal-500/70">{resume.fileType}</span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1"><FiClock /> {new Date(resume.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          {resume.atsScore && (
+                            <div className="mt-4 inline-flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
+                              <span className="text-xs text-gray-400">Latest ATS Score:</span>
+                              <span className={`text-sm font-bold ${resume.atsScore > 80 ? 'text-green-400' : 'text-yellow-400'}`}>{resume.atsScore}%</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-3 mt-6 pt-4 border-t border-white/5">
+                        <Button 
+                          variant="secondary" 
+                          className="flex-1 gap-2 bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20 text-white"
+                          onClick={(e) => { e.stopPropagation(); handleDownload(resume); }}
+                          isLoading={downloadingId === resume._id}
+                        >
+                          <FiDownload /> Download Original
+                        </Button>
+                        <Button 
+                          variant="danger" 
+                          className="flex-1 gap-2 bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-red-300"
+                          onClick={(e) => { e.stopPropagation(); setResumeToDelete(resume); }}
+                        >
+                          <FiTrash2 /> Delete
+                        </Button>
                       </div>
                     </div>
-                  </div>
+                  ))}
                   
-                  <div className="flex gap-2 mt-5">
-                    <Button 
-                      variant="primary" 
-                      size="sm" 
-                      className="flex-1 gap-2"
-                      onClick={() => handleDownload(resume)}
-                      isLoading={downloadingId === resume._id}
-                    >
-                      <FiDownload /> {downloadingId === resume._id ? "..." : "Download"}
-                    </Button>
-                    <Button 
-                      variant="danger" 
-                      size="sm" 
-                      className="flex-1 gap-2"
-                      onClick={() => setResumeToDelete(resume)}
-                    >
-                      <FiTrash2 /> Delete
-                    </Button>
-                  </div>
+                  {resumes.length > 1 && (
+                    <div className="text-center pt-4 border-t border-gray-800">
+                      <p className="text-sm text-gray-500">Only your most recent resume is actively shown.</p>
+                    </div>
+                  )}
                 </div>
-              ))}
+              )}
             </div>
-          )}
+          </div>
+          
+          {/* Right Column: Quick Links & Tips */}
+          <div className="space-y-6">
+            <div className="bg-gradient-to-br from-teal-900/40 to-black border border-teal-500/20 rounded-2xl p-6 shadow-xl">
+              <h3 className="text-lg font-bold text-white mb-2">Next Steps</h3>
+              <ul className="space-y-4 mt-4">
+                <li className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center flex-shrink-0 text-sm font-bold">1</div>
+                  <p className="text-sm text-gray-300">Analyze your resume against a target job description.</p>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center flex-shrink-0 text-sm font-bold">2</div>
+                  <p className="text-sm text-gray-300">Use the AI Rebuilder to generate an optimized version.</p>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center flex-shrink-0 text-sm font-bold">3</div>
+                  <p className="text-sm text-gray-300">Track your application in the Job Tracker.</p>
+                </li>
+              </ul>
+              <Button onClick={() => navigate("/job-tracker")} className="w-full mt-6 bg-white/10 hover:bg-white/20 text-white border-0">
+                Open Job Tracker
+              </Button>
+            </div>
+          </div>
+
         </div>
       </div>
 

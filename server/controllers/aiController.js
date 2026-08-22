@@ -110,12 +110,13 @@ const scoreATS = async (req, res) => {
       }
       
       RULES FOR SKILL EXTRACTION (EXTREMELY CRITICAL):
-      1. Perform an EXHAUSTIVE, line-by-line keyword extraction of the JD. Do not miss ANY technical skill, tool, framework, or core competency mentioned.
+      1. Perform an EXHAUSTIVE, line-by-line keyword extraction of the JD. Identify every technical skill, tool, framework, and core competency.
       2. Strictly compare the extracted JD skills against the Resume.
-      3. Skills found in the Resume MUST be placed in "matchingSkills".
-      4. Skills found in the JD but missing from the Resume MUST be placed in "missingSkills". Leave nothing out.
-      5. Do NOT list missingSkills if they exist anywhere in the resume text.
-      6. Recommendations must be actionable resume edits.
+      3. Skills found in the Resume MUST be placed in "matchingSkills". Do a case-insensitive search.
+      4. Skills found in the JD but missing from the Resume MUST be placed in "missingSkills".
+      5. CRITICAL: Do NOT list any skill in "missingSkills" if a synonym, abbreviation, or the exact skill exists ANYWHERE in the Resume text. 
+      6. CRITICAL: Do not hallucinate or invent skills not explicitly written in the JD.
+      7. Recommendations must be actionable resume edits.
     `;
     const result = await generateContentWithRetry(prompt);
     const response = await result.response;

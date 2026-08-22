@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { rebuildResume, scoreATS } from "../services/aiService";
-import html2pdf from "html2pdf.js";
 import { useToast } from "../context/ToastContext";
 import { motion } from "framer-motion";
 import { FiDownload, FiArrowLeft, FiEdit3, FiImage } from "react-icons/fi";
@@ -39,25 +38,13 @@ function ResumeRebuilder() {
   const handleDownload = async () => {
     if (!componentRef.current) return;
     setDownloading(true);
-    try {
-      const element = componentRef.current;
-      const opt = {
-        margin:       15,
-        filename:     'Rebuilt_Resume.pdf',
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2 },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-
-      await html2pdf().set(opt).from(element).save();
-      
-      addToast("Resume downloaded successfully!", "success");
-    } catch (error) {
-      console.error(error);
-      addToast("Failed to download PDF.", "error");
-    } finally {
+    
+    // Give the state a moment to update if needed, then trigger native print
+    setTimeout(() => {
+      window.print();
       setDownloading(false);
-    }
+      addToast("Print dialog opened!", "success");
+    }, 100);
   };
 
   const handleRescore = async () => {
@@ -430,7 +417,16 @@ function ResumeRebuilder() {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
+          body * {
+            visibility: hidden;
+          }
+          .printable-resume, .printable-resume * {
+            visibility: visible;
+          }
           .printable-resume {
+            position: absolute;
+            left: 0;
+            top: 0;
             box-shadow: none !important;
             padding: 0 !important;
             margin: 0 !important;

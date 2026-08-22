@@ -1,5 +1,5 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const Resume = require("../models/resume");
+const Resume = require("../models/Resume");
 const puppeteer = require("puppeteer");
 
 // API Key Rotation Logic

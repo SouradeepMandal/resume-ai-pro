@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { rebuildResume, scoreATS, downloadPdf } from "../services/aiService";
+import { rebuildResume, scoreATS } from "../services/aiService";
+import html2pdf from "html2pdf.js";
 import { useToast } from "../context/ToastContext";
 import { motion } from "framer-motion";
 import { FiDownload, FiArrowLeft, FiEdit3, FiImage } from "react-icons/fi";
@@ -39,34 +40,16 @@ function ResumeRebuilder() {
     if (!componentRef.current) return;
     setDownloading(true);
     try {
-      // Add Tailwind CSS CDN to the HTML payload so Puppeteer can render it correctly
-      const tailwindScript = '<script src="https://cdn.tailwindcss.com"></script>';
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            ${tailwindScript}
-            <style>
-              body { background-color: white; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-              .printable-resume { box-shadow: none !important; margin: 0 auto; width: 210mm; min-height: 297mm; padding: 40px; }
-            </style>
-          </head>
-          <body>
-            ${componentRef.current.outerHTML}
-          </body>
-        </html>
-      `;
+      const element = componentRef.current;
+      const opt = {
+        margin:       15,
+        filename:     'Rebuilt_Resume.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
 
-      const blob = await downloadPdf(htmlContent);
-      
-      // Create a blob URL and trigger download
-      const url = window.URL.createObjectURL(new Blob([blob]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", "Rebuilt_Resume.pdf");
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
+      await html2pdf().set(opt).from(element).save();
       
       addToast("Resume downloaded successfully!", "success");
     } catch (error) {

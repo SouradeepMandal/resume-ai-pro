@@ -164,7 +164,10 @@ function Dashboard() {
                     <div 
                       key={resume._id} 
                       className="bg-black/50 border border-teal-500/30 rounded-xl p-5 relative overflow-hidden cursor-pointer hover:border-teal-500 transition-colors"
-                      onClick={() => window.open(`http://localhost:5000/${resume.filePath.replace(/\\/g, '/')}`, '_blank')}
+                      onClick={() => {
+                        const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+                        window.open(`${baseUrl}/${resume.filePath.replace(/\\/g, '/')}`, '_blank');
+                      }}
                     >
                       <div className="absolute top-0 right-0 bg-teal-500 text-black text-xs font-bold px-3 py-1 rounded-bl-lg">
                         ACTIVE

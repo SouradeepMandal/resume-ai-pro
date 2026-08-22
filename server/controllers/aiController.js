@@ -3,7 +3,57 @@ const Resume = require("../models/resume");
 const puppeteer = require("puppeteer");
 const JobApplication = require("../models/JobApplication");
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// API Key Rotation Logic
+const apiKeys = [
+  process.env.GEMINI_API_KEY,
+  process.env.GEMINI_API_KEY_2,
+  process.env.GEMINI_API_KEY_3,
+  process.env.GEMINI_API_KEY_4,
+  process.env.GEMINI_API_KEY_5
+].filter(Boolean); // Keep only defined keys
+
+let currentKeyIndex = 0;
+
+function getGenAI() {
+  if (apiKeys.length === 0) {
+    throw new Error("No Gemini API keys configured in environment variables.");
+  }
+  const key = apiKeys[currentKeyIndex];
+  // Round-robin to the next key
+  currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
+  return new GoogleGenerativeAI(key);
+}
+
+// Helper to handle rate limits and dynamically rotate keys
+async function generateContentWithRetry(prompt, maxRetries = apiKeys.length || 3) {
+  let lastError;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const genAI = getGenAI();
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-3.5-flash-lite",
+        generationConfig: { temperature: 0, responseMimeType: "application/json" }
+      });
+      const result = await model.generateContent(prompt);
+      return result;
+    } catch (error) {
+      lastError = error;
+      if (error.status === 429 || error.message?.includes("429") || error.message?.includes("quota")) {
+        console.warn(`API Rate limit hit. Retrying with next key... (Attempt ${i + 1} of ${maxRetries})`);
+        await new Promise(res => setTimeout(res, 1500)); // Small delay
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError;
+}
+
+// Helper to truncate text to save massive token usage
+const truncateText = (text, maxLength = 8000) => {
+  if (!text) return "";
+  return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
+};
 
 /**
  * Score Resume against a Job Description
@@ -30,44 +80,44 @@ const scoreATS = async (req, res) => {
       if (!resume.extractedText) {
         return res.status(400).json({ message: "Resume text not extracted yet. Please re-upload your resume." });
       }
+
+      // 100% Deterministic: If the user re-analyzes the exact same JD, return the cached result
+      if (resume.targetJobDescription && resume.targetJobDescription.trim() === jobDescription.trim() && resume.atsFeedback) {
+        console.log("Returning cached ATS analysis for identical Job Description.");
+        return res.json(resume.atsFeedback);
+      }
+
       textToAnalyze = resume.extractedText;
     }
 
-    // Call Gemini to score the resume
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-3.5-flash",
-      generationConfig: { temperature: 0 }
-    });
+    // Truncate to save tokens and prevent huge payloads causing 429s
+    const safeText = truncateText(textToAnalyze, 8000);
+    const safeJd = truncateText(jobDescription, 5000);
 
     const prompt = `
-      You are an expert ATS (Applicant Tracking System) and senior recruiter.
-      I will provide a Resume and a Job Description.
+      You are an expert ATS (Applicant Tracking System) Analyzer.
+      Your task is to exhaustively compare the Resume against the Job Description (JD).
+      Resume: ${safeText}
+      JD: ${safeJd}
       
-      Resume:
-      ${textToAnalyze}
-      
-      Job Description:
-      ${jobDescription}
-      
-      Analyze the resume against the job description and provide a JSON response with exactly the following structure:
+      Return ONLY a valid JSON object (no markdown, no backticks) with EXACTLY this structure:
       {
-        "atsScore": 85, // integer out of 100
-        "matchAnalysis": "A brief summary of how well the candidate fits the role.",
-        "missingSkills": ["skill 1", "skill 2"],
-        "matchingSkills": ["skill 3", "skill 4"],
-        "recommendations": ["Actionable tip on what to add/edit in the resume", "Another editing tip"]
+        "atsScore": 85,
+        "matchAnalysis": "Brief summary",
+        "missingSkills": ["skill1"],
+        "matchingSkills": ["skill2"],
+        "recommendations": ["Actionable tip"]
       }
       
-      CRITICAL RULES for ATS Analysis:
-      1. If a skill is explicitly listed in the Resume's 'skills' array or mentioned anywhere in the experience section, YOU MUST count it as a Matching Skill. 
-      2. Do NOT list a skill as a Missing Skill if the exact keyword or a very close synonym appears anywhere in the resume text.
-      3. For recommendations, DO NOT tell the user to "Upload a full resume" or "Submit a resume". The user has already uploaded one! Instead, provide actionable advice on what they should *write* or *add* to their bullet points (e.g., "Add metrics to your experience section", "Mention specific tools like X and Y").
-      4. ONLY list technical skills, tools, frameworks, or domain knowledge in 'missingSkills' and 'matchingSkills'. DO NOT list non-technical requirements like "2-5 years of experience", "Degree", or "Production-grade deployment experience" as skills.
-      
-      Return ONLY valid JSON. Do not include markdown formatting like \`\`\`json.
+      RULES FOR SKILL EXTRACTION (EXTREMELY CRITICAL):
+      1. Perform an EXHAUSTIVE, line-by-line keyword extraction of the JD. Do not miss ANY technical skill, tool, framework, or core competency mentioned.
+      2. Strictly compare the extracted JD skills against the Resume.
+      3. Skills found in the Resume MUST be placed in "matchingSkills".
+      4. Skills found in the JD but missing from the Resume MUST be placed in "missingSkills". Leave nothing out.
+      5. Do NOT list missingSkills if they exist anywhere in the resume text.
+      6. Recommendations must be actionable resume edits.
     `;
-
-    const result = await model.generateContent(prompt);
+    const result = await generateContentWithRetry(prompt);
     const response = await result.response;
     const text = response.text().replace(/```json/g, "").replace(/```/g, "").trim();
     
@@ -75,7 +125,7 @@ const scoreATS = async (req, res) => {
     try {
       parsedData = JSON.parse(text);
     } catch (e) {
-      console.error("Failed to parse JSON from Gemini:", text);
+      console.error("Failed to parse JSON from Gemini in scoreATS. Raw output:", text);
       return res.status(500).json({ message: "Failed to analyze resume. AI returned invalid format." });
     }
 
@@ -113,37 +163,36 @@ const predictInterview = async (req, res) => {
       return res.status(400).json({ message: "A parsed resume must be attached to the job to predict interview probability." });
     }
 
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-3.5-flash",
-      generationConfig: { temperature: 0 }
-    });
+    const safeText = truncateText(job.resume.extractedText, 8000);
+    const safeJd = truncateText(job.jobDescription, 5000);
 
     const prompt = `
-      You are an expert tech recruiter predicting the likelihood of a candidate getting an interview.
-      
-      Resume:
-      ${job.resume.extractedText}
-      
+      You are an expert tech recruiter predicting interview likelihood.
+      Resume: ${safeText}
       Job Title: ${job.jobTitle}
       Company: ${job.companyName}
-      Job Description: ${job.jobDescription}
+      Job Description: ${safeJd}
       
-      Analyze the alignment and provide a JSON response:
+      Return ONLY a valid JSON object (no markdown, no backticks) with EXACTLY this structure:
       {
-        "probabilityScore": 75, // integer out of 100
-        "reasoning": "Why this score was given.",
-        "strengths": ["strength 1"],
-        "weaknesses": ["weakness 1"]
+        "probabilityScore": 75,
+        "reasoning": "Explanation",
+        "strengths": ["s1"],
+        "weaknesses": ["w1"]
       }
-      
-      Return ONLY valid JSON.
     `;
 
-    const result = await model.generateContent(prompt);
+    const result = await generateContentWithRetry(prompt);
     const response = await result.response;
     const text = response.text().replace(/```json/g, "").replace(/```/g, "").trim();
     
-    const parsedData = JSON.parse(text);
+    let parsedData;
+    try {
+      parsedData = JSON.parse(text);
+    } catch (e) {
+      console.error("Failed to parse JSON from Gemini in predictInterview. Raw output:", text);
+      return res.status(500).json({ message: "Failed to predict interview. AI returned invalid format." });
+    }
     
     job.interviewProbability = parsedData.probabilityScore;
     job.aiNotes = parsedData.reasoning;
@@ -176,76 +225,45 @@ const rebuildResume = async (req, res) => {
       return res.status(400).json({ message: "Resume text not extracted yet." });
     }
 
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-3.5-flash",
-      generationConfig: { temperature: 0 }
-    });
+    const safeText = truncateText(resume.extractedText, 8000);
+    const safeJd = truncateText(jobDescription, 5000);
 
     const prompt = `
       You are an expert ATS Resume Rebuilder.
-      Job Description:
-      ${jobDescription}
+      JD: ${safeJd}
+      Original Resume: ${safeText}
       
-      Original Resume Text:
-      ${resume.extractedText}
+      Your task is to REWRITE the resume to maximize the ATS score.
+      RULES:
+      1. EXTREMELY CRITICAL: You MUST copy ALL dates and timestamps EXACTLY as they appear for their respective items in the original resume. If a date is missing for an item (e.g. an internship or project), leave the "date" field EMPTY or use exactly what was written (e.g. "2 months", "Ongoing"). DO NOT guess, DO NOT swap dates between sections, and DO NOT copy dates from one section to another.
+      2. No buzzwords.
+      3. Extract Name, Email, Phone, Location, LinkedIn to personalInfo.
+      4. MUST have: summary, experience, education, skills.
+      5. Optional: certifications, projects, languages, hobbies, achievements, publications, references.
+      6. Use standard headers.
+      7. Use action verbs for bullets.
+      8. Use exact keywords from JD.
+      ${autoIntegrate && missingSkills.length > 0 ? `9. EXTREMELY CRITICAL: You MUST include the following skills EXACTLY as written into the "skills" array, and you MUST weave them organically into the "experience" or "projects" descriptions: [${missingSkills.join(', ')}]. Failure to include these exact skills is unacceptable.` : "9. Do not add fake skills."}
       
-      Your task is to REWRITE the resume to maximize the ATS score for this specific job description. 
-      CRITICAL RULES:
-      1. DO NOT make up or hallucinate any experience, companies, degrees, or titles. Keep all historical facts EXACTLY as they appear in the original resume.
-      2. EXACT DATES: NEVER modify, calculate, or format dates. Copy them character-by-character from the original text (e.g. keep "05/2021" exactly as "05/2021"). 
-      3. BANNED WORDS: DO NOT start summaries or bullet points with cliché, generic buzzwords like "Results-driven", "Dynamic", "Accomplished", "Passionate", or "Highly motivated". Be direct and professional.
-      4. EXTRACT the candidate's actual Name, Email, Phone, and LinkedIn directly from the provided Resume text. DO NOT use placeholders like "Your Name" or "Full Name". You must keep the biodata strictly constant. If a piece of contact info is missing, leave it as an empty string "".
-      5. DO NOT hallucinate "years of experience". If the job requires 2-5 years but the original resume does not explicitly show 2-5 years of experience, DO NOT claim the candidate has 2-5 years of experience. You must remain honest about the candidate's duration of experience.
-      ${autoIntegrate && missingSkills.length > 0 ? `6. The user has requested to AUTO-INTEGRATE missing skills. You MUST creatively and naturally weave the following missing skills into the experience bullet points: [${missingSkills.join(', ')}]. You MUST integrate EVERY single technical skill from this list. Additionally, you MUST add these exact missing skills directly into the 'skills' array at the end of the JSON.` : "6. DO NOT add skills the candidate does not have. Only highlight existing skills that match the job description."}
-      7. DO NOT include unnecessary, strange, or non-standard sectional headings within the bullet points or summary. Keep the content structure clean and strictly adhere to the JSON keys provided.
-      9. Contact Information: Use City, State, Zip or City, Country format for location. Format LinkedIn/GitHub as raw URLs or clean text anchors (e.g. linkedin.com/in/...).
-      10. Standardization of Section Headers: You must map all sections precisely to the JSON schema provided. Do not invent new headers.
-      11. Chronological Block Formatting: Standardize all dates into Month YYYY or MM/YYYY format. Eliminate seasons or project-based durations (e.g. 3 Months).
-      12. Linguistic Cleanliness: Every bullet point under work experience MUST start with a high-impact, past or present-tense action verb (e.g., Built, Optimized, Led). Eliminate passive starters like "Responsible for...". Ensure past jobs use past-tense and current jobs use present-tense verbs.
-      13. Symbol Stripping: Remove all graphic elements, custom bullet symbols, icons, or unicode noise. Use simple text.
-      
-      Return the rewritten resume in a structured JSON format so I can render it into a beautiful UI template.
-      
-      Format MUST BE exactly this JSON structure:
+      Return ONLY a valid JSON object (no markdown, no backticks) with EXACTLY this structure:
       {
-        "personalInfo": {
-          "name": "<Extract the exact name of the candidate from the resume text>",
-          "email": "<Extract the exact email of the candidate, or empty string>",
-          "phone": "<Extract the exact phone of the candidate, or empty string>",
-          "location": "<Extract the exact location of the candidate, or empty string>",
-          "linkedin": "<Extract the exact linkedin URL of the candidate, or empty string>"
-        },
-        "summary": "<Write a powerful, ATS-optimized professional summary>",
-        "experience": [
-          {
-            "title": "<Extract actual job title>",
-            "company": "<Extract actual company name>",
-            "date": "<Extract actual start and end dates>",
-            "description": ["<Optimized bullet point 1>", "<Optimized bullet point 2>"]
-          }
-        ],
-        "education": [
-          {
-            "degree": "<Extract actual degree>",
-            "school": "<Extract actual school name>",
-            "date": "<Extract actual graduation year>"
-          }
-        ],
-        "projects": [
-          {
-            "title": "<Extract project title>",
-            "date": "<Extract project date or empty string>",
-            "description": ["<Project bullet 1>", "<Project bullet 2>"]
-          }
-        ],
-        "skills": ["<Extract actual skill 1>", "<Extract actual skill 2>"]
+        "personalInfo": {"name":"","email":"","phone":"","location":"","linkedin":""},
+        "summary": "2-4 lines",
+        "experience": [{"title":"","company":"","date":"","description":["bullet 1"]}],
+        "education": [{"degree":"","school":"","date":""}],
+        "skills": ["Skill 1"],
+        "projects": [{"title":"","date":"","description":["bullet"]}],
+        "certifications": ["Cert 1"],
+        "languages": ["Lang 1"],
+        "hobbies": ["Hobby 1"],
+        "achievements": ["Achievement 1"],
+        "publications": ["Publication 1"],
+        "references": ["Reference 1"]
       }
-
-      Return ONLY valid JSON.
-      CRITICAL: You MUST include ALL experience and education from the original resume. DO NOT return empty arrays.
+      CRITICAL: Include ALL original experience/education. Fit on one page.
     `;
 
-    const result = await model.generateContent(prompt);
+    const result = await generateContentWithRetry(prompt);
     const response = await result.response;
     const text = response.text().replace(/```json/g, "").replace(/```/g, "").trim();
     
@@ -263,7 +281,7 @@ const rebuildResume = async (req, res) => {
         });
       }
     } catch (e) {
-      console.error("Failed to parse JSON from Gemini:", text);
+      console.error("Failed to parse JSON from Gemini in rebuildResume. Raw output:", text);
       return res.status(500).json({ message: "Failed to rewrite resume. AI returned invalid format." });
     }
 

@@ -17,12 +17,13 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "google-auth-library": "^11.0.2",
     "jsonwebtoken": "^9.0.3",
     "mammoth": "^1.12.1",
     "mongoose": "^9.8.1",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.5",
-    "pdf-parse": "^2.4.5",
+    "pdf-parse": "^1.1.1",
     "puppeteer": "^25.8.0"
   },
   "devDependencies": {

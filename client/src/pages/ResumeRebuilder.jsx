@@ -16,7 +16,7 @@ function ResumeRebuilder() {
   const [resumeData, setResumeData] = useState(null);
   const [atsResult, setAtsResult] = useState(location.state?.result || null);
   const [rescoring, setRescoring] = useState(false);
-  const { autoIntegrate } = location.state || {};
+  const [selectedSkills, setSelectedSkills] = useState([]);
   
   const [fontFamily, setFontFamily] = useState("font-sans");
   const componentRef = useRef();
@@ -96,7 +96,7 @@ function ResumeRebuilder() {
   const handleRebuild = async () => {
     setLoading(true);
     try {
-      const data = await rebuildResume(resumeId, jobDescription, autoIntegrate, atsResult?.missingSkills || []);
+      const data = await rebuildResume(resumeId, jobDescription, selectedSkills.length > 0, selectedSkills);
       setResumeData(data);
       addToast("Resume successfully rebuilt!", "success");
     } catch (error) {
@@ -140,11 +140,18 @@ function ResumeRebuilder() {
                   {rescoring ? "Rescoring..." : "Rescore with AI"}
                 </button>
                 <button 
+                  onClick={handleRebuild}
+                  disabled={loading}
+                  className="bg-teal-500 hover:bg-teal-400 text-black font-bold py-3 px-6 rounded-xl transition-all shadow-[0_0_15px_rgba(43,181,160,0.3)] disabled:opacity-50 flex items-center gap-2"
+                >
+                  {loading ? "Rebuilding..." : <><FiEdit3 /> Rebuild Again</>}
+                </button>
+                <button 
                   onClick={handleDownload}
                   disabled={downloading}
                   className="bg-teal-500 hover:bg-teal-400 text-black font-bold py-3 px-6 rounded-xl transition-all shadow-[0_0_15px_rgba(43,181,160,0.3)] flex items-center gap-2 disabled:opacity-50"
                 >
-                  <FiDownload /> {downloading ? "Generating PDF..." : "Download PDF"}
+                  <FiDownload /> {downloading ? "PDF..." : "Download"}
                 </button>
               </>
             )}
@@ -165,19 +172,46 @@ function ResumeRebuilder() {
                   <p className="text-center text-sm text-gray-300">{atsResult.matchAnalysis}</p>
                 </div>
 
+                {resumeData && (
+                  <div className="bg-teal-900/30 border border-teal-500/30 rounded-lg p-3 mb-6">
+                    <p className="text-teal-300 text-xs flex gap-2 items-start">
+                      <span className="text-base mt-[-2px]">💡</span>
+                      <span>
+                        <strong>Pro Tip:</strong> Always click <strong>Rescore with AI</strong> after generating! If skills are still missing, tick them and hit <strong>Rebuild Again</strong>.
+                      </span>
+                    </p>
+                  </div>
+                )}
+
                 {atsResult.missingSkills && atsResult.missingSkills.length > 0 && (
                   <div className="mb-4">
-                    <h3 className="text-red-400 font-medium text-sm mb-2">Missing Skills (Try to add)</h3>
-                    <ul className="text-xs text-gray-400 space-y-1">
-                      {atsResult.missingSkills.map((s, i) => <li key={i}>• {s}</li>)}
-                    </ul>
+                    <h3 className="text-red-400 font-medium text-sm mb-2">Select Skills to Auto-Integrate</h3>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                      {atsResult.missingSkills.map((s, i) => (
+                        <label key={i} className="flex items-center text-xs text-gray-300 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            className="mr-2 rounded border-gray-600 bg-black/50 text-teal-500 focus:ring-teal-500"
+                            checked={selectedSkills.includes(s)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedSkills([...selectedSkills, s]);
+                              } else {
+                                setSelectedSkills(selectedSkills.filter(skill => skill !== s));
+                              }
+                            }}
+                          />
+                          {s}
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 )}
                 
                 {atsResult.matchingSkills && atsResult.matchingSkills.length > 0 && (
                   <div>
                     <h3 className="text-green-400 font-medium text-sm mb-2">Matching Skills</h3>
-                    <ul className="text-xs text-gray-400 space-y-1">
+                    <ul className="text-xs text-gray-400 space-y-1 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
                       {atsResult.matchingSkills.map((s, i) => <li key={i}>• {s}</li>)}
                     </ul>
                   </div>
@@ -257,7 +291,7 @@ function ResumeRebuilder() {
                   {/* Experience */}
                   {resumeData.experience && resumeData.experience.length > 0 && (
                     <div className="mb-6">
-                      <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-4">Professional Experience</h2>
+                      <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-4">Work Experience</h2>
                       <div className="space-y-5">
                         {resumeData.experience.map((exp, idx) => (
                           <div key={idx}>
@@ -319,13 +353,81 @@ function ResumeRebuilder() {
                     </div>
                   )}
 
+                  {/* Certifications */}
+                  {resumeData.certifications && resumeData.certifications.length > 0 && (
+                    <div className="mb-6">
+                      <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-3">Certifications</h2>
+                      <ul className="list-disc list-outside ml-4 text-sm text-gray-700 space-y-1.5 leading-relaxed">
+                        {resumeData.certifications.map((cert, idx) => (
+                          <li key={idx}>{cert}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Achievements */}
+                  {resumeData.achievements && resumeData.achievements.length > 0 && (
+                    <div className="mb-6">
+                      <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-3">Achievements & Awards</h2>
+                      <ul className="list-disc list-outside ml-4 text-sm text-gray-700 space-y-1.5 leading-relaxed">
+                        {resumeData.achievements.map((achieve, idx) => (
+                          <li key={idx}>{achieve}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Publications */}
+                  {resumeData.publications && resumeData.publications.length > 0 && (
+                    <div className="mb-6">
+                      <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-3">Publications & Research</h2>
+                      <ul className="list-disc list-outside ml-4 text-sm text-gray-700 space-y-1.5 leading-relaxed">
+                        {resumeData.publications.map((pub, idx) => (
+                          <li key={idx}>{pub}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
                   {/* Skills */}
                   {resumeData.skills && resumeData.skills.length > 0 && (
-                    <div>
-                      <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-3">Core Competencies</h2>
+                    <div className="mb-6">
+                      <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-3">Skills</h2>
                       <p className="text-sm text-gray-700 leading-relaxed">
                         {resumeData.skills.join(" • ")}
                       </p>
+                    </div>
+                  )}
+
+                  {/* Languages */}
+                  {resumeData.languages && resumeData.languages.length > 0 && (
+                    <div className="mb-6">
+                      <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-3">Languages</h2>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {resumeData.languages.join(" • ")}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Hobbies */}
+                  {resumeData.hobbies && resumeData.hobbies.length > 0 && (
+                    <div className="mb-6">
+                      <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-3">Hobbies & Interests</h2>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {resumeData.hobbies.join(" • ")}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* References */}
+                  {resumeData.references && resumeData.references.length > 0 && (
+                    <div className="mb-6">
+                      <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-3">References</h2>
+                      <ul className="list-disc list-outside ml-4 text-sm text-gray-700 space-y-1.5 leading-relaxed">
+                        {resumeData.references.map((ref, idx) => (
+                          <li key={idx}>{ref}</li>
+                        ))}
+                      </ul>
                     </div>
                   )}
 

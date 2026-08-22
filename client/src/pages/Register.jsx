@@ -5,6 +5,8 @@ import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
 import { FcGoogle } from "react-icons/fc";
 import { motion, AnimatePresence } from "framer-motion";
+import { GoogleLogin } from '@react-oauth/google';
+import api from "../services/api";
 
 function Register() {
   const navigate = useNavigate();
@@ -28,6 +30,22 @@ function Register() {
       ...formData,
       [e.target.name]: e.target.value,
     });
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      setLoading(true);
+      const response = await api.post("/auth/google", {
+        credential: credentialResponse.credential,
+      });
+      login(response.data.token);
+      addToast("Google Signup Successful!", "success");
+      navigate("/dashboard");
+    } catch (error) {
+      addToast(error.response?.data?.message || "Google Signup Failed", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -207,15 +225,15 @@ function Register() {
                   <div className="flex-1 border-t border-white/10"></div>
                 </div>
 
-                <div className="flex flex-col gap-3">
-                  <button
-                    type="button"
-                    className="w-full h-11 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium text-sm rounded-xl transition-all flex items-center justify-center gap-2"
-                    onClick={() => addToast("Google login coming soon", "info")}
-                  >
-                    <FcGoogle className="w-5 h-5" />
-                    Continue with Google
-                  </button>
+                <div className="flex flex-col gap-3 items-center justify-center">
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={() => {
+                      addToast("Google Login Failed", "error");
+                    }}
+                    theme="filled_black"
+                    shape="pill"
+                  />
                 </div>
               </>
             )}

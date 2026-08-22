@@ -31,7 +31,6 @@ function Navbar() {
             <>
               <Link className="hover:text-teal-400 transition-colors" to="/dashboard">Dashboard</Link>
               <Link className="hover:text-teal-400 transition-colors" to="/ats-checker">ATS Match</Link>
-              <Link className="hover:text-teal-400 transition-colors" to="/job-tracker">Job Tracker</Link>
               <button onClick={handleLogout} className="text-gray-400 hover:text-white transition-colors ml-4 border-l border-white/10 pl-4">Logout</button>
             </>
           ) : (

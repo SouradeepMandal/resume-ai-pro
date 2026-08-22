@@ -186,6 +186,9 @@ const verifyOTP = async (req, res) => {
   }
 };
 
+const { OAuth2Client } = require('google-auth-library');
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 const getProfile = (req, res) => {
     res.status(200).json({
         message: "Protected route accessed successfully",
@@ -193,9 +196,67 @@ const getProfile = (req, res) => {
     });
 };
 
+const googleLogin = async (req, res) => {
+  try {
+    const { credential } = req.body;
+    
+    // Verify Google token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    
+    const payload = ticket.getPayload();
+    const { email, name, sub: googleId } = payload;
+    
+    // Find user by Google ID or Email
+    let user = await User.findOne({ $or: [{ googleId }, { email }] });
+    
+    if (user) {
+      // If user exists but doesn't have googleId linked, link it now
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.isVerified = true;
+        await user.save();
+      }
+    } else {
+      // Create new user
+      user = await User.create({
+        name,
+        email,
+        googleId,
+        isVerified: true
+      });
+    }
+
+    // Generate JWT
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.status(200).json({
+      message: "Google Login successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        isVerified: user.isVerified
+      },
+    });
+
+  } catch (error) {
+    console.error("Google Login Error:", error);
+    res.status(500).json({ message: "Google Login Failed", error: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   verifyOTP,
-  getProfile
+  getProfile,
+  googleLogin
 };

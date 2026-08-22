@@ -15,10 +15,6 @@ function ATSChecker() {
     const saved = localStorage.getItem("ats_result");
     return saved ? JSON.parse(saved) : null;
   });
-  const [autoIntegrate, setAutoIntegrate] = useState(() => {
-    const saved = localStorage.getItem("ats_autoIntegrate");
-    return saved === "true";
-  });
   
   const { addToast } = useToast();
   const navigate = useNavigate();
@@ -38,10 +34,6 @@ function ATSChecker() {
       localStorage.removeItem("ats_result");
     }
   }, [result]);
-
-  useEffect(() => {
-    localStorage.setItem("ats_autoIntegrate", autoIntegrate);
-  }, [autoIntegrate]);
 
   const fetchResumes = useCallback(async () => {
     try {
@@ -103,7 +95,7 @@ function ATSChecker() {
           </div>
           {result && (
             <button 
-              onClick={() => navigate('/rebuild-resume', { state: { result, resumeId, jobDescription, autoIntegrate } })}
+              onClick={() => navigate('/rebuild-resume', { state: { result, resumeId, jobDescription } })}
               className="bg-teal-500 hover:bg-teal-400 text-black font-bold py-2 px-4 rounded-xl transition-all shadow-[0_0_15px_rgba(43,181,160,0.3)]"
             >
               Rebuild Resume ✨
@@ -145,19 +137,6 @@ function ATSChecker() {
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
             ></textarea>
-
-            <div className="mt-4 flex items-center">
-              <input
-                id="autoIntegrate"
-                type="checkbox"
-                className="w-4 h-4 text-teal-500 bg-black border-gray-800 rounded focus:ring-teal-500 focus:ring-2"
-                checked={autoIntegrate}
-                onChange={(e) => setAutoIntegrate(e.target.checked)}
-              />
-              <label htmlFor="autoIntegrate" className="ml-2 text-sm text-gray-300">
-                Auto-integrate Missing Skills (during AI Rebuild)
-              </label>
-            </div>
             
             <button
               onClick={handleScore}

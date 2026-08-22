@@ -108,19 +108,16 @@ function Dashboard() {
       <div className="max-w-6xl mx-auto space-y-8">
         
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl gap-4">
-          <div>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-gradient-to-r from-teal-900/40 to-black border border-white/10 rounded-2xl p-8 shadow-2xl gap-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
+          <div className="relative z-10">
             <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Dashboard</h1>
-            {user && <p className="text-gray-400 mt-2 text-lg">Welcome back, <span className="text-teal-400">{user.name}</span></p>}
+            {user && <p className="text-gray-300 mt-2 text-lg font-light">Welcome back, <span className="text-teal-400 font-bold">{user.name}</span>. Ready to land your dream job?</p>}
           </div>
-          <div className="flex gap-4">
-            <div className="bg-black/50 border border-teal-500/30 px-6 py-3 rounded-xl text-center">
-              <p className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1">Active Applications</p>
-              <p className="text-2xl font-bold text-teal-400">{activeJobs}</p>
-            </div>
-            <div className="bg-black/50 border border-indigo-500/30 px-6 py-3 rounded-xl text-center">
-              <p className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1">Interviews</p>
-              <p className="text-2xl font-bold text-indigo-400">{interviews}</p>
+          <div className="flex gap-4 relative z-10">
+            <div className="bg-black/50 border border-teal-500/30 px-6 py-3 rounded-xl text-center shadow-[0_0_15px_rgba(43,181,160,0.15)]">
+              <p className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1">Uploaded Resumes</p>
+              <p className="text-2xl font-bold text-teal-400">{resumes.length}</p>
             </div>
           </div>
         </div>
@@ -235,25 +232,37 @@ function Dashboard() {
           
           {/* Right Column: Quick Links & Tips */}
           <div className="space-y-6">
-            <div className="bg-gradient-to-br from-teal-900/40 to-black border border-teal-500/20 rounded-2xl p-6 shadow-xl">
-              <h3 className="text-lg font-bold text-white mb-2">Next Steps</h3>
-              <ul className="space-y-4 mt-4">
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center flex-shrink-0 text-sm font-bold">1</div>
-                  <p className="text-sm text-gray-300">Analyze your resume against a target job description.</p>
+            <div className="bg-gradient-to-br from-teal-900/40 to-black border border-teal-500/20 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+              <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-teal-500/10 rounded-full blur-2xl"></div>
+              <h3 className="text-lg font-bold text-white mb-4 relative z-10">How it Works</h3>
+              <ul className="space-y-5 relative z-10">
+                <li className="flex items-start gap-4">
+                  <div className="w-8 h-8 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center flex-shrink-0 text-sm font-bold border border-teal-500/30">1</div>
+                  <p className="text-sm text-gray-300 mt-1"><strong>Upload</strong> your master resume in PDF format.</p>
                 </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center flex-shrink-0 text-sm font-bold">2</div>
-                  <p className="text-sm text-gray-300">Use the AI Rebuilder to generate an optimized version.</p>
+                <li className="flex items-start gap-4">
+                  <div className="w-8 h-8 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center flex-shrink-0 text-sm font-bold border border-teal-500/30">2</div>
+                  <p className="text-sm text-gray-300 mt-1"><strong>Analyze</strong> it against your target job description.</p>
                 </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center flex-shrink-0 text-sm font-bold">3</div>
-                  <p className="text-sm text-gray-300">Track your application in the Job Tracker.</p>
+                <li className="flex items-start gap-4">
+                  <div className="w-8 h-8 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center flex-shrink-0 text-sm font-bold border border-teal-500/30">3</div>
+                  <p className="text-sm text-gray-300 mt-1"><strong>Rebuild</strong> instantly with Gemini AI to max out your ATS score.</p>
                 </li>
               </ul>
-              <Button onClick={() => navigate("/job-tracker")} className="w-full mt-6 bg-white/10 hover:bg-white/20 text-white border-0">
-                Open Job Tracker
-              </Button>
+              {resumes.length > 0 && (
+                <Button onClick={() => navigate("/ats-checker")} className="w-full mt-8 bg-teal-500 hover:bg-teal-400 text-black font-bold border-0 shadow-[0_0_15px_rgba(43,181,160,0.3)] relative z-10">
+                  Analyze ATS Match
+                </Button>
+              )}
+            </div>
+            
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 shadow-xl">
+              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">ATS Pro Tips</h3>
+              <ul className="space-y-3 text-sm text-gray-300">
+                <li className="flex gap-2"><span className="text-teal-400">✅</span> Avoid complex tables or multi-column layouts.</li>
+                <li className="flex gap-2"><span className="text-teal-400">✅</span> Keep dates strictly formatted consistently.</li>
+                <li className="flex gap-2"><span className="text-teal-400">✅</span> Weave missing skills organically into your experience.</li>
+              </ul>
             </div>
           </div>
 

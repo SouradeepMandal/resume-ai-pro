@@ -1,6 +1,6 @@
 const fs = require("fs").promises;
 const path = require("path");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+
 const mammoth = require("mammoth");
 
 
@@ -11,28 +11,15 @@ const mammoth = require("mammoth");
 const extractPdfText = async (filePath) => {
   try {
     const buffer = await fs.readFile(filePath);
-    const base64pdf = buffer.toString("base64");
-
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
-
-    const prompt = "Extract all the text and information from this resume perfectly. Include contact info, skills, education, and experience. Also, if there is a profile photo, describe it briefly.";
     
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: base64pdf,
-          mimeType: "application/pdf"
-        }
-      }
-    ]);
-
-    const text = result.response.text();
-    return text || "";
+    // Using pdf-parse instead of Gemini to save tokens
+    const pdfParse = require("pdf-parse");
+    const data = await pdfParse(buffer);
+    
+    return data.text || "";
   } catch (error) {
-    console.error("PDF parsing via Gemini error:", error);
-    throw new Error("Failed to extract text from PDF using AI.");
+    console.error("PDF parsing via pdf-parse error:", error);
+    throw new Error("Failed to extract text from PDF locally.");
   }
 };
 

@@ -1,23 +1,22 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { loginUser } from "../services/authService";
+import { loginUser, requestLoginOTP, verifyOTP } from "../services/authService";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
-import { FcGoogle } from "react-icons/fc";
-import { motion } from "framer-motion";
-import { GoogleLogin } from '@react-oauth/google';
-import api from "../services/api";
+import { motion, AnimatePresence } from "framer-motion";
 
 function Login() {
   const navigate = useNavigate();
   const { addToast } = useToast();
   const { login } = useAuth();
 
+  const [loginMethod, setLoginMethod] = useState("password"); // 'password', 'otp_request', 'otp_verify'
+  
   const [formData, setFormData] = useState({
     identifier: "",
     password: "",
   });
-
+  const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -27,7 +26,7 @@ function Login() {
     });
   };
 
-  const handleSubmit = async (e) => {
+  const handlePasswordLogin = async (e) => {
     e.preventDefault();
     if (!formData.identifier || !formData.password) {
       addToast("Please enter your email and password", "error");
@@ -50,17 +49,38 @@ function Login() {
     }
   };
 
-  const handleGoogleSuccess = async (credentialResponse) => {
+  const handleRequestOTP = async (e) => {
+    e.preventDefault();
+    if (!formData.identifier) {
+      addToast("Please enter your email", "error");
+      return;
+    }
     try {
       setLoading(true);
-      const response = await api.post("/auth/google", {
-        credential: credentialResponse.credential,
-      });
-      login(response.data.token);
-      addToast("Google Login Successful!", "success");
+      await requestLoginOTP(formData.identifier);
+      addToast("OTP sent to your email", "success");
+      setLoginMethod("otp_verify");
+    } catch (error) {
+      addToast(error.response?.data?.message || "Failed to send OTP", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async (e) => {
+    e.preventDefault();
+    if (otp.length !== 6) {
+      addToast("Please enter a valid 6-digit OTP", "error");
+      return;
+    }
+    try {
+      setLoading(true);
+      const data = await verifyOTP({ identifier: formData.identifier, otp });
+      login(data.token);
+      addToast("Login Successful!", "success");
       navigate("/dashboard");
     } catch (error) {
-      addToast(error.response?.data?.message || "Google Login Failed", "error");
+      addToast(error.response?.data?.message || "Verification Failed", "error");
     } finally {
       setLoading(false);
     }
@@ -96,61 +116,158 @@ function Login() {
           {/* Auth Methods */}
           <div className="flex flex-col gap-5">
             
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              
-              <div className="flex flex-col gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1.5 ml-1">Email Address</label>
+            <AnimatePresence mode="wait">
+              {loginMethod === "password" && (
+                <motion.form 
+                  key="password_form"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  onSubmit={handlePasswordLogin} 
+                  className="flex flex-col gap-4"
+                >
+                  <div className="flex flex-col gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-1.5 ml-1">Email Address</label>
+                      <input
+                        type="text"
+                        name="identifier"
+                        placeholder="you@example.com"
+                        value={formData.identifier}
+                        onChange={handleChange}
+                        className="w-full h-11 px-4 bg-black/50 border border-gray-800 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-inner"
+                        autoComplete="username"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-1.5 ml-1">Password</label>
+                      <input
+                        type="password"
+                        name="password"
+                        placeholder="••••••••"
+                        value={formData.password}
+                        onChange={handleChange}
+                        className="w-full h-11 px-4 bg-black/50 border border-gray-800 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-inner"
+                        autoComplete="current-password"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-11 bg-teal-500 hover:bg-teal-400 text-black font-semibold text-sm rounded-xl transition-all disabled:opacity-70 flex items-center justify-center mt-2 shadow-[0_0_20px_rgba(43,181,160,0.3)] hover:shadow-[0_0_25px_rgba(43,181,160,0.5)]"
+                  >
+                    {loading ? "Authenticating..." : "Sign In"}
+                  </button>
+
+                  <div className="text-center mt-2">
+                    <button 
+                      type="button" 
+                      onClick={() => setLoginMethod("otp_request")}
+                      className="text-xs text-teal-400 hover:text-teal-300 font-medium transition-colors"
+                    >
+                      Login with OTP instead
+                    </button>
+                  </div>
+                </motion.form>
+              )}
+
+              {loginMethod === "otp_request" && (
+                <motion.form 
+                  key="otp_request_form"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  onSubmit={handleRequestOTP} 
+                  className="flex flex-col gap-4"
+                >
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1.5 ml-1">Email Address</label>
+                    <input
+                      type="text"
+                      name="identifier"
+                      placeholder="you@example.com"
+                      value={formData.identifier}
+                      onChange={handleChange}
+                      className="w-full h-11 px-4 bg-black/50 border border-gray-800 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-inner"
+                      autoComplete="username"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-11 bg-teal-500 hover:bg-teal-400 text-black font-semibold text-sm rounded-xl transition-all disabled:opacity-70 flex items-center justify-center mt-2 shadow-[0_0_20px_rgba(43,181,160,0.3)] hover:shadow-[0_0_25px_rgba(43,181,160,0.5)]"
+                  >
+                    {loading ? "Sending..." : "Send OTP"}
+                  </button>
+
+                  <div className="text-center mt-2">
+                    <button 
+                      type="button" 
+                      onClick={() => setLoginMethod("password")}
+                      className="text-xs text-gray-500 hover:text-teal-400 font-medium transition-colors"
+                    >
+                      Back to Password Login
+                    </button>
+                  </div>
+                </motion.form>
+              )}
+
+              {loginMethod === "otp_verify" && (
+                <motion.form 
+                  key="otp_verify_form"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  onSubmit={handleVerifyOTP} 
+                  className="flex flex-col gap-4"
+                >
+                  <p className="text-sm text-gray-400 text-center mb-2">
+                    We sent a verification code to <br />
+                    <strong className="text-teal-400">{formData.identifier}</strong>
+                  </p>
                   <input
                     type="text"
-                    name="identifier"
-                    placeholder="you@example.com"
-                    value={formData.identifier}
-                    onChange={handleChange}
-                    className="w-full h-11 px-4 bg-black/50 border border-gray-800 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-inner"
-                    autoComplete="username"
+                    placeholder="Enter 6-digit OTP"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    maxLength={6}
+                    className="w-full h-12 px-4 bg-black/50 border border-gray-800 rounded-xl text-teal-400 font-bold tracking-[0.5em] text-center text-lg focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-inner"
                   />
-                </div>
-                
-                <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1.5 ml-1">Password</label>
-                  <input
-                    type="password"
-                    name="password"
-                    placeholder="••••••••"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="w-full h-11 px-4 bg-black/50 border border-gray-800 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-inner"
-                    autoComplete="current-password"
-                  />
-                </div>
-              </div>
+                  <div className="text-right mt-1">
+                    <button 
+                      type="button" 
+                      onClick={handleRequestOTP}
+                      className="text-xs text-gray-500 hover:text-teal-400 transition-colors"
+                    >
+                      Resend Code
+                    </button>
+                  </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full h-11 bg-teal-500 hover:bg-teal-400 text-black font-semibold text-sm rounded-xl transition-all disabled:opacity-70 flex items-center justify-center mt-2 shadow-[0_0_20px_rgba(43,181,160,0.3)] hover:shadow-[0_0_25px_rgba(43,181,160,0.5)]"
-              >
-                {loading ? "Authenticating..." : "Sign In"}
-              </button>
-            </form>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-11 bg-teal-500 hover:bg-teal-400 text-black font-semibold text-sm rounded-xl transition-all disabled:opacity-70 flex items-center justify-center mt-2 shadow-[0_0_20px_rgba(43,181,160,0.3)] hover:shadow-[0_0_25px_rgba(43,181,160,0.5)]"
+                  >
+                    {loading ? "Verifying..." : "Verify & Log In"}
+                  </button>
 
-            <div className="flex items-center my-1">
-              <div className="flex-1 border-t border-white/10"></div>
-              <span className="px-3 text-xs text-gray-500">OR</span>
-              <div className="flex-1 border-t border-white/10"></div>
-            </div>
+                  <div className="text-center mt-2">
+                    <button 
+                      type="button" 
+                      onClick={() => setLoginMethod("otp_request")}
+                      className="text-xs text-gray-500 hover:text-teal-400 font-medium transition-colors"
+                    >
+                      Change Email
+                    </button>
+                  </div>
+                </motion.form>
+              )}
+            </AnimatePresence>
 
-            <div className="flex flex-col gap-3 items-center justify-center">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() => {
-                  addToast("Google Login Failed", "error");
-                }}
-                theme="filled_black"
-                shape="pill"
-              />
-            </div>
           </div>
         </div>
 

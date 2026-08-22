@@ -16,6 +16,12 @@ export const loginUser = async (userData) => {
   return response.data;
 };
 
+// Request Login OTP
+export const requestLoginOTP = async (email) => {
+  const response = await API.post("/request-login-otp", { email });
+  return response.data;
+};
+
 // Verify OTP
 export const verifyOTP = async (data) => {
   const response = await API.post("/verify-otp", data);

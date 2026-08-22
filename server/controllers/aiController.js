@@ -1,7 +1,6 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Resume = require("../models/resume");
 const puppeteer = require("puppeteer");
-const JobApplication = require("../models/JobApplication");
 
 // API Key Rotation Logic
 const apiKeys = [
@@ -147,63 +146,7 @@ const scoreATS = async (req, res) => {
   }
 };
 
-/**
- * Predict Interview Probability
- */
-const predictInterview = async (req, res) => {
-  try {
-    const { jobId } = req.body;
-    
-    const job = await JobApplication.findOne({ _id: jobId, user: req.user.id }).populate('resume');
-    if (!job) {
-      return res.status(404).json({ message: "Job Application not found" });
-    }
-    
-    if (!job.resume || !job.resume.extractedText) {
-      return res.status(400).json({ message: "A parsed resume must be attached to the job to predict interview probability." });
-    }
 
-    const safeText = truncateText(job.resume.extractedText, 8000);
-    const safeJd = truncateText(job.jobDescription, 5000);
-
-    const prompt = `
-      You are an expert tech recruiter predicting interview likelihood.
-      Resume: ${safeText}
-      Job Title: ${job.jobTitle}
-      Company: ${job.companyName}
-      Job Description: ${safeJd}
-      
-      Return ONLY a valid JSON object (no markdown, no backticks) with EXACTLY this structure:
-      {
-        "probabilityScore": 75,
-        "reasoning": "Explanation",
-        "strengths": ["s1"],
-        "weaknesses": ["w1"]
-      }
-    `;
-
-    const result = await generateContentWithRetry(prompt);
-    const response = await result.response;
-    const text = response.text().replace(/```json/g, "").replace(/```/g, "").trim();
-    
-    let parsedData;
-    try {
-      parsedData = JSON.parse(text);
-    } catch (e) {
-      console.error("Failed to parse JSON from Gemini in predictInterview. Raw output:", text);
-      return res.status(500).json({ message: "Failed to predict interview. AI returned invalid format." });
-    }
-    
-    job.interviewProbability = parsedData.probabilityScore;
-    job.aiNotes = parsedData.reasoning;
-    await job.save();
-
-    res.json(parsedData);
-  } catch (error) {
-    console.error("Error in predictInterview:", error);
-    res.status(500).json({ message: "Internal server error during interview prediction" });
-  }
-};
 
 /**
  * Rebuild Resume based on ATS Feedback
@@ -336,7 +279,6 @@ const downloadPdf = async (req, res) => {
 
 module.exports = {
   scoreATS,
-  predictInterview,
   rebuildResume,
   downloadPdf
 };

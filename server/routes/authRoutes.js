@@ -4,6 +4,7 @@ const router = express.Router();
 const {
     registerUser,
     loginUser,
+    requestLoginOTP,
     verifyOTP,
     getProfile,
     googleLogin,
@@ -14,6 +15,7 @@ const protect = require("../middleware/authMiddleware");
 // Public Routes
 router.post("/register", registerUser);
 router.post("/login", loginUser);
+router.post("/request-login-otp", requestLoginOTP);
 router.post("/verify-otp", verifyOTP);
 router.post("/google", googleLogin);
 

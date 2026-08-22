@@ -7,7 +7,6 @@ import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Dashboard from "../pages/Dashboard";
 import ATSChecker from "../pages/ATSChecker";
-import JobTracker from "../pages/JobTracker";
 import ResumeRebuilder from "../pages/ResumeRebuilder";
 import NotFound from "../pages/NotFound";
 
@@ -30,7 +29,6 @@ function AppRoutes() {
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/ats-checker" element={<ATSChecker />} />
-            <Route path="/job-tracker" element={<JobTracker />} />
             <Route path="/rebuild-resume" element={<ResumeRebuilder />} />
           </Route>
         </Route>

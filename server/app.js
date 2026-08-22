@@ -38,10 +38,8 @@ app.use("/api/resumes", resumeRoutes);
 // ===============================
 
 const aiRoutes = require("./routes/aiRoutes");
-const jobRoutes = require("./routes/jobRoutes");
 
 app.use("/api/ai", aiRoutes);
-app.use("/api/jobs", jobRoutes);
 
 // ===============================
 // Root Route

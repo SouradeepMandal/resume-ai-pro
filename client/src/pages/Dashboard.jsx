@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { getProfile } from "../services/authService";
 import { getMyResumes, downloadResume, deleteResume } from "../services/resumeService";
-import { getJobs } from "../services/jobService";
 import ResumeUpload from "../components/ResumeUpload";
 import Button from "../components/ui/Button";
 import ConfirmModal from "../components/ui/ConfirmModal";
@@ -14,7 +13,6 @@ let dashboardCache = null;
 function Dashboard() {
   const [user, setUser] = useState(null);
   const [resumes, setResumes] = useState(dashboardCache?.resumes || []);
-  const [jobs, setJobs] = useState(dashboardCache?.jobs || []);
   const [resumeLoading, setResumeLoading] = useState(!dashboardCache);
   const [downloadingId, setDownloadingId] = useState(null);
   const [resumeToDelete, setResumeToDelete] = useState(null);
@@ -38,14 +36,12 @@ function Dashboard() {
       
       if (!dashboardCache) setResumeLoading(true);
       
-      const [resumeData, jobData] = await Promise.all([
-        getMyResumes(),
-        getJobs()
+      const [resumeData] = await Promise.all([
+        getMyResumes()
       ]);
       
-      dashboardCache = { resumes: resumeData.resumes || [], jobs: jobData || [] };
+      dashboardCache = { resumes: resumeData.resumes || [] };
       setResumes(dashboardCache.resumes);
-      setJobs(dashboardCache.jobs);
     } catch (error) {
       console.error("Dashboard error:", error);
       if (error.response?.status === 401) {
@@ -99,9 +95,6 @@ function Dashboard() {
     }
   };
 
-  // Job Tracker Stats
-  const activeJobs = jobs.filter(j => ["Bookmarked", "Applied", "Interview"].includes(j.status)).length;
-  const interviews = jobs.filter(j => j.status === "Interview").length;
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] pt-24 pb-12 px-4 sm:px-6 lg:px-8 font-sans">

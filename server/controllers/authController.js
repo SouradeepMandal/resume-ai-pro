@@ -5,12 +5,14 @@ const nodemailer = require("nodemailer");
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-// Configure Nodemailer transporter
+// Configure Nodemailer transporter with Brevo
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: 'smtp-relay.brevo.com',
+  port: 2525, // Try alternative port
+  secure: false, // TLS requires secure: false for port 2525
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.BREVO_SMTP_USER,
+    pass: process.env.BREVO_SMTP_PASS,
   },
 });
 
@@ -38,63 +40,26 @@ const registerUser = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Generate OTP
-    const otp = generateOTP();
-    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
     // Create new user
     const userPayload = {
       name,
       password: hashedPassword,
-      otp,
-      otpExpiresAt,
-      isVerified: false
+      isVerified: true
     };
 
     if (isEmail) userPayload.email = identifier;
     else userPayload.phone = identifier;
 
     const user = await User.create(userPayload);
-    
-    if (isEmail) {
-      // Send the OTP via Email
-      const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: identifier,
-        subject: "Verify your ResumeAI Pro Account",
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
-            <h2 style="color: #4F46E5; text-align: center;">ResumeAI Pro Verification</h2>
-            <p style="font-size: 16px; color: #333;">Hello ${name},</p>
-            <p style="font-size: 16px; color: #333;">Thank you for registering. Please use the following OTP to verify your account. This code is valid for 10 minutes.</p>
-            <div style="background-color: #F3F4F6; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
-              <h1 style="margin: 0; letter-spacing: 5px; color: #111;">${otp}</h1>
-            </div>
-            <p style="font-size: 14px; color: #777; text-align: center;">If you did not request this, please ignore this email.</p>
-          </div>
-        `,
-      };
-
-      try {
-        await transporter.sendMail(mailOptions);
-        console.log(`OTP sent to ${identifier}`);
-      } catch (mailError) {
-        console.error("Error sending OTP email:", mailError);
-        throw new Error("Failed to send OTP email: " + mailError.message);
-      }
-    } else {
-      // TODO: Actually send the OTP via SMS here
-      console.log(`Mock OTP sent to phone ${identifier}: ${otp}`);
-    }
 
     res.status(201).json({
-      message: "User registered successfully. Please verify OTP.",
+      message: "User registered successfully.",
       user: {
         id: user._id,
         name: user.name,
         identifier: identifier,
       },
-      needsVerification: true
+      needsVerification: false
     });
 
   } catch (error) {
@@ -156,6 +121,74 @@ const loginUser = async (req, res) => {
   }
 };
 
+// Request Login OTP
+const requestLoginOTP = async (req, res) => {
+  try {
+    const { email: identifier } = req.body;
+    
+    if (!identifier) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const isEmail = identifier.includes('@');
+    const query = isEmail ? { email: identifier } : { phone: identifier };
+
+    const user = await User.findOne(query);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found with this email" });
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    
+    // Log OTP to terminal to help with testing if Brevo blocks the email
+    console.log(`\n================================`);
+    console.log(`🔒 LOCAL DEV OTP for ${identifier}: ${otp}`);
+    console.log(`================================\n`);
+
+    user.otp = otp;
+    user.otpExpiresAt = otpExpiresAt;
+    await user.save();
+
+    if (isEmail) {
+      const mailOptions = {
+        from: process.env.BREVO_SENDER_EMAIL,
+        to: identifier,
+        subject: "Your ResumeAI Pro Login Code",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+            <h2 style="color: #14b8a6; text-align: center;">Login to ResumeAI Pro</h2>
+            <p style="font-size: 16px; color: #333;">Hello ${user.name},</p>
+            <p style="font-size: 16px; color: #333;">Please use the following OTP to log in to your account. This code is valid for 10 minutes.</p>
+            <div style="background-color: #F3F4F6; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
+              <h1 style="margin: 0; letter-spacing: 5px; color: #111;">${otp}</h1>
+            </div>
+            <p style="font-size: 14px; color: #777; text-align: center;">If you did not request this, please ignore this email.</p>
+          </div>
+        `,
+      };
+
+      try {
+        await transporter.sendMail(mailOptions);
+        console.log(`Login OTP sent to ${identifier}`);
+      } catch (mailError) {
+        console.error("Error sending OTP email:", mailError.message);
+        console.warn("⚠️ IMPORTANT: Email sending failed (likely due to Brevo IP restrictions). Use the OTP printed above in the terminal to continue testing the login flow.");
+        // We still return 200 so you can test the frontend OTP screen using the console.logged OTP!
+      }
+    } else {
+      console.log(`Mock Login OTP sent to phone ${identifier}: ${otp}`);
+    }
+
+    res.status(200).json({ message: "OTP processed (check terminal if email failed)" });
+  } catch (error) {
+    console.error("Request Login OTP Error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
 // Verify OTP
 const verifyOTP = async (req, res) => {
   try {
@@ -179,7 +212,23 @@ const verifyOTP = async (req, res) => {
     user.otpExpiresAt = undefined;
     await user.save();
 
-    res.status(200).json({ message: "User verified successfully" });
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.status(200).json({ 
+      message: "Login successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        isVerified: user.isVerified
+      },
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });
@@ -256,6 +305,7 @@ const googleLogin = async (req, res) => {
 module.exports = {
   registerUser,
   loginUser,
+  requestLoginOTP,
   verifyOTP,
   getProfile,
   googleLogin

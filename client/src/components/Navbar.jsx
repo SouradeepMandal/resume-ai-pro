@@ -11,7 +11,7 @@ function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-white/5">
+    <nav className="fixed top-0 left-0 w-full z-50 glass-dark border-x-0 border-t-0 border-b border-white/5">
       <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
         <Link to="/" className="flex items-center gap-2">
           <div className="w-8 h-8 flex items-center justify-center bg-teal-500 rounded-lg">
@@ -19,8 +19,8 @@ function Navbar() {
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
             </svg>
           </div>
-          <h1 className="text-xl md:text-2xl font-extrabold text-white tracking-tight">
-            ResumeAI <span className="text-teal-400">Match</span>
+          <h1 className="text-xl md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-blue-500 tracking-tight">
+            ResumeAI Match
           </h1>
         </Link>
 

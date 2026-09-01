@@ -35,7 +35,8 @@ const features = [
 
 function Features() {
   return (
-    <section className="bg-slate-950 text-white py-24">
+    <section className="text-white py-24 relative overflow-hidden">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-teal-500/5 rounded-full blur-3xl -z-10 pointer-events-none"></div>
 
       <div className="max-w-7xl mx-auto px-8">
 
@@ -53,10 +54,10 @@ function Features() {
 
             <div
               key={index}
-              className="bg-slate-900 rounded-2xl p-8 border border-slate-700 hover:border-blue-500 hover:-translate-y-2 transition-all duration-300"
+              className="glass-dark rounded-2xl p-8 hover:border-teal-500/50 hover:shadow-[0_0_30px_rgba(43,181,160,0.15)] hover:-translate-y-2 transition-all duration-300 group"
             >
 
-              <div className="text-blue-400 mb-5">
+              <div className="text-teal-400 mb-5 group-hover:scale-110 group-hover:text-teal-300 transition-all duration-300">
                 {feature.icon}
               </div>
 

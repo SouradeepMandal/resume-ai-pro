@@ -85,10 +85,11 @@ function ATSChecker() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-gray-100 p-8 font-sans pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen text-gray-100 p-8 font-sans pt-24 pb-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      <div className="absolute top-1/4 -right-20 w-[600px] h-[600px] bg-teal-500/5 rounded-full blur-[100px] -z-10 pointer-events-none"></div>
       <div className="max-w-5xl mx-auto space-y-8">
         
-        <header className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl flex justify-between items-center">
+        <header className="glass rounded-2xl p-6 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-white tracking-tight">ATS Match Checker</h1>
             <p className="text-gray-400 mt-2">Paste a job description below to see how well your resume matches.</p>
@@ -106,7 +107,7 @@ function ATSChecker() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
           {/* Input Section */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md">
+          <div className="glass rounded-2xl p-6">
             
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-300 mb-2">Select Resume</label>
@@ -120,7 +121,7 @@ function ATSChecker() {
                   <select
                     value={resumeId}
                     onChange={(e) => setResumeId(e.target.value)}
-                    className="w-full bg-black/50 border border-gray-800 rounded-xl py-3 pl-10 pr-4 text-sm text-gray-200 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 appearance-none cursor-pointer"
+                    className="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl py-3 pl-10 pr-4 text-sm text-gray-200 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 appearance-none cursor-pointer transition-all"
                   >
                     {resumes.map(r => (
                       <option key={r._id} value={r._id}>{r.originalName} ({new Date(r.createdAt).toLocaleDateString()})</option>
@@ -132,7 +133,7 @@ function ATSChecker() {
 
             <label className="block text-sm font-medium text-gray-300 mb-2">Job Description</label>
             <textarea
-              className="w-full h-48 bg-black/50 border border-gray-800 rounded-xl p-4 text-sm text-gray-200 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all resize-none shadow-inner"
+              className="w-full h-48 bg-slate-900/50 border border-slate-700/50 rounded-xl p-4 text-sm text-gray-200 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all resize-none"
               placeholder="Paste the job description here..."
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
@@ -155,7 +156,7 @@ function ATSChecker() {
           </div>
 
           {/* Results Section */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md relative overflow-hidden min-h-[400px]">
+          <div className="glass rounded-2xl p-6 relative overflow-hidden min-h-[400px]">
             {!result && !loading && (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
                 <FiCheckCircle className="w-12 h-12 mb-3 opacity-20" />

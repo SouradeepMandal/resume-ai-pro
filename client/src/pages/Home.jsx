@@ -35,7 +35,7 @@ function Home() {
             className="text-7xl font-extrabold leading-tight"
           >
             Build an
-            <span className="text-blue-400"> Interview Winning </span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-blue-500"> Interview Winning </span>
             Resume
           </motion.h1>
 
@@ -86,10 +86,12 @@ function Home() {
 
           <div className="absolute w-96 h-96 rounded-full bg-blue-500/20 blur-3xl"></div>
 
-          <img
+          <motion.img
             src={heroImage}
             alt="AI Resume"
             className="relative w-[520px] rounded-2xl shadow-2xl"
+            animate={{ y: [0, -15, 0] }}
+            transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
           />
 
           {/* Floating Card 1 */}

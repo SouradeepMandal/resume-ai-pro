@@ -97,7 +97,10 @@ function Dashboard() {
 
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] pt-24 pb-12 px-4 sm:px-6 lg:px-8 font-sans">
+    <div className="min-h-screen pt-24 pb-12 px-4 sm:px-6 lg:px-8 font-sans relative overflow-hidden">
+      {/* Ambient background glows */}
+      <div className="absolute top-20 left-10 w-[500px] h-[500px] bg-teal-500/5 rounded-full blur-[100px] -z-10 pointer-events-none"></div>
+      <div className="absolute bottom-20 right-10 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
       <div className="max-w-6xl mx-auto space-y-8">
         
         {/* Header */}
@@ -125,7 +128,7 @@ function Dashboard() {
             )}
 
             {/* Resumes Section */}
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
+            <div className="glass rounded-2xl p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-white">Master Resume</h2>
                 <div className="flex gap-3">
@@ -163,7 +166,7 @@ function Dashboard() {
                   {resumes.slice(0,1).map((resume) => (
                     <div 
                       key={resume._id} 
-                      className="bg-black/50 border border-teal-500/30 rounded-xl p-5 relative overflow-hidden cursor-pointer hover:border-teal-500 transition-colors"
+                      className="glass-dark border border-teal-500/30 rounded-xl p-5 relative overflow-hidden cursor-pointer hover:border-teal-400 hover:shadow-[0_0_25px_rgba(43,181,160,0.25)] transition-all duration-300"
                       onClick={() => {
                         const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
                         window.open(`${baseUrl}/${resume.filePath.replace(/\\/g, '/')}`, '_blank');
@@ -228,7 +231,7 @@ function Dashboard() {
           
           {/* Right Column: Quick Links & Tips */}
           <div className="space-y-6">
-            <div className="bg-gradient-to-br from-teal-900/40 to-black border border-teal-500/20 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+            <div className="bg-gradient-to-br from-teal-900/40 to-[#0a0a0a]/80 backdrop-blur-xl border border-teal-500/20 rounded-2xl p-6 shadow-xl relative overflow-hidden">
               <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-teal-500/10 rounded-full blur-2xl"></div>
               <h3 className="text-lg font-bold text-white mb-4 relative z-10">How it Works</h3>
               <ul className="space-y-5 relative z-10">
@@ -252,7 +255,7 @@ function Dashboard() {
               )}
             </div>
             
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 shadow-xl">
+            <div className="glass rounded-2xl p-6">
               <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">ATS Pro Tips</h3>
               <ul className="space-y-3 text-sm text-gray-300">
                 <li className="flex gap-2"><span className="text-teal-400">✅</span> Avoid complex tables or multi-column layouts.</li>

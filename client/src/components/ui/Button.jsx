@@ -12,7 +12,7 @@ const Button = ({
   const baseClasses = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0a0a0a] disabled:opacity-50 disabled:cursor-not-allowed';
   
   const variants = {
-    primary: 'bg-teal-500 text-black hover:bg-teal-400 focus:ring-teal-500 shadow-[0_0_15px_rgba(43,181,160,0.3)] hover:shadow-[0_0_20px_rgba(43,181,160,0.5)]',
+    primary: 'bg-gradient-to-r from-teal-500 to-teal-400 text-black hover:from-teal-400 hover:to-teal-300 focus:ring-teal-500 shadow-[0_0_20px_rgba(43,181,160,0.2)] hover:shadow-[0_0_25px_rgba(43,181,160,0.4)]',
     secondary: 'bg-black/50 text-white border border-teal-500/50 hover:bg-white/5 focus:ring-teal-500 shadow-inner',
     danger: 'bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30 focus:ring-red-500',
     ghost: 'bg-transparent text-teal-400 hover:bg-teal-500/10 focus:ring-teal-500'

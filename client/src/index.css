@@ -9,14 +9,15 @@
 }
 
 body {
-  @apply bg-gray-50 text-gray-900 font-sans antialiased;
+  @apply bg-slate-950 text-gray-100 font-sans antialiased bg-gradient-to-br from-slate-950 via-[#0a0a0a] to-slate-900 min-h-screen;
+  font-family: 'Outfit', sans-serif;
 }
 
 /* Custom utility for glassmorphism */
 .glass {
-  @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
+  @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)];
 }
 
 .glass-dark {
-  @apply bg-gray-900/80 backdrop-blur-md border border-gray-700/50 shadow-xl;
+  @apply bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)];
 }

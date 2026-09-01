@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import heroImage from "../assets/hero.png";
+import heroImage from "../assets/isometric_dashboard.jpg";
 import Features from "../components/Features";
 import Stats from "../components/Stats";
 import HowItWorks from "../components/HowItWorks";
@@ -89,7 +89,7 @@ function Home() {
           <img
             src={heroImage}
             alt="AI Resume"
-            className="relative w-[520px]"
+            className="relative w-[520px] rounded-2xl shadow-2xl"
           />
 
           {/* Floating Card 1 */}
